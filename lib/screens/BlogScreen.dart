@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:untitled/screens/AddBlogScreen.dart';
 import 'package:untitled/widgets/AppDrawer.dart';
 
@@ -19,6 +20,10 @@ class BlogScreen extends StatefulWidget {
 
 class _BlogScreenState extends State<BlogScreen> {
   String uid;
+  String username;
+  String email;
+  String userImageUrl;
+  List<dynamic> likedBlogs = [];
   bool isLoading;
 
   @override
@@ -30,8 +35,30 @@ class _BlogScreenState extends State<BlogScreen> {
 
   void initialise() async{
     final currentUser = await FirebaseAuth.instance.currentUser();
+    final userData = await Firestore.instance.collection("users").document(currentUser.uid).get();
+
     setState(() {
+      username = userData["username"];
+      email = userData["email"];
+      userImageUrl = userData["imageUrl"];
       uid = currentUser.uid;
+      likedBlogs = userData["likedBlogs"] ?? [];
+    });
+  }
+
+  void toggleLike() async{
+    if(likedBlogs.contains(widget.blogId)){
+      likedBlogs.remove(widget.blogId);
+    }else{
+      likedBlogs.add(widget.blogId);
+    }
+
+    setState(() {});
+    await Firestore.instance.collection("users").document(uid).setData({
+      "username" : username,
+      "email" : email,
+      "imageUrl" : userImageUrl,
+      "likedBlogs" : likedBlogs
     });
   }
 
@@ -74,7 +101,13 @@ class _BlogScreenState extends State<BlogScreen> {
                   Divider(),
                   Container(
                     padding: EdgeInsets.all(10),
-                    child: Text(widget.text,),
+                    child: Column(
+                        children: <Widget>[
+                          Text(widget.text),
+                          IconButton(icon: FaIcon(likedBlogs.contains(widget.blogId) ? FontAwesomeIcons.solidHeart : FontAwesomeIcons.heart),
+                            onPressed: toggleLike,)
+                        ],
+                    ),
                   ),
                   if(uid == widget.creatorId && !isLoading)
                     Row(
